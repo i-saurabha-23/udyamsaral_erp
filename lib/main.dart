@@ -1,19 +1,20 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:udyamsaral_erp/Auth/Login/LoginScreen.dart';
+import 'package:udyamsaral_erp/constants/firebase.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     const firebaseOptions = FirebaseOptions(
-      apiKey: "AIzaSyAXx5YTupgJ6fCl6OhOX6fINGDt1Wi0UTg",
-      authDomain: "udyamsaral-erp.firebaseapp.com",
-      projectId: "udyamsaral-erp",
-      storageBucket: "udyamsaral-erp.firebasestorage.app",
-      messagingSenderId: "409096617835",
-      appId: "1:409096617835:web:101d07be90d0a5b34b162e",
-      measurementId: "G-339ECXCJC0",
+      apiKey: API_KEY,
+      authDomain: AUTH_DOMAIN,
+      projectId: PROJECT_ID,
+      storageBucket: STORAGE_BUCKET,
+      messagingSenderId: MESSAGING_SENDER_ID,
+      appId: APP_ID,
+      measurementId: MEASUREMENT_ID,
     );
 
     await Firebase.initializeApp(options: firebaseOptions);
