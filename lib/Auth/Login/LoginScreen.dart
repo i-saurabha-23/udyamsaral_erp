@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:udyamsaral_erp/Auth/ForgotPassword/ForgotPasswordScreen.dart';
 import 'package:udyamsaral_erp/Auth/Register/RegisterScreen.dart';
+import 'package:udyamsaral_erp/Screens/DashboardScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,6 +12,81 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  bool isLoading = false;
+
+  bool isEmailValid(String email) {
+    if (!email.contains('@')) {
+      debugPrint("Enter a valid email");
+      return false;
+    }
+
+    int indexAt = email.indexOf('@');
+    int indexDot = email.indexOf('.', indexAt);
+
+    if (indexDot < indexAt) {
+      debugPrint("Enter a valid email");
+      return false;
+    }
+
+    debugPrint("Email validated");
+    return true;
+  }
+
+  Future<void> handelSignIn({
+    required String email,
+    required String password,
+  }) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    if (!isEmailValid(email)) {
+      debugPrint("Email validation failed");
+      return;
+    }
+
+    try {
+      UserCredential credential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      User? user = credential.user;
+
+      setState(() {
+        isLoading = false;
+      });
+
+      if (user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Login successful',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.blue,
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => DashboardScreen(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint("$e");
+
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,6 +148,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         children: [
                           TextField(
+                            controller: emailController,
+
                             style: TextStyle(color: Colors.black),
                             cursorColor: Colors.blue,
 
@@ -105,6 +184,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(height: 24),
 
                           TextField(
+                            controller: passwordController,
+
                             style: TextStyle(color: Colors.black),
                             cursorColor: Colors.blue,
 
@@ -141,7 +222,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(height: 24),
 
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              String email = emailController.text.trim();
+                              String password = passwordController.text.trim();
+
+                              await handelSignIn(
+                                email: email,
+                                password: password,
+                              );
+                            },
 
                             style: ElevatedButton.styleFrom(
                               minimumSize: Size(500, 48),
@@ -154,10 +243,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
 
-                            child: Text(
-                              'Login',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                            child: isLoading
+                                ? CircularProgressIndicator(color: Colors.white)
+                                : Text('Login', style: TextStyle(fontSize: 16)),
                           ),
 
                           SizedBox(height: 24),
