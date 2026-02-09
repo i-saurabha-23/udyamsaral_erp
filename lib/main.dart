@@ -1,8 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:udyamsaral_erp/Auth/Register/RegisterScreen.dart';
-import 'package:udyamsaral_erp/Auth/SplashScreen/SplashScreen.dart';
-import 'package:udyamsaral_erp/constants/firebase.dart';
+import 'package:vyavastha_vistar/Auth/Register/RegisterScreen.dart';
+import 'package:vyavastha_vistar/Auth/SplashScreen/SplashScreen.dart';
+import 'package:vyavastha_vistar/constants/firebase.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

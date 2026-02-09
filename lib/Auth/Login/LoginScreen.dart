@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:udyamsaral_erp/Auth/Register/RegisterScreen.dart';
-import 'package:udyamsaral_erp/Screens/DashboardScreen.dart';
+import 'package:vyavastha_vistar/Auth/Register/RegisterScreen.dart';
+import 'package:vyavastha_vistar/Screens/DashboardScreen.dart';
+import 'package:vyavastha_vistar/Screens/DashboardScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
