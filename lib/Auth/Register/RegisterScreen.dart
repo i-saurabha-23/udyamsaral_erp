@@ -11,557 +11,448 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController codeController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController cnfPassController = TextEditingController();
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  final passwordController = TextEditingController();
 
   bool isLoading = false;
 
+  String? nameError;
+  String? emailError;
+  String? phoneError;
+  String? passwordError;
+
+  String? generalError;
+
   bool isEmailValid(String email) {
-    debugPrint("Email received: $email");
-
-    if (!email.contains('@')) {
-      debugPrint("Enter corect email");
-      return false;
-    }
-
-    int indexAt = email.indexOf('@');
-    int indexDot = email.indexOf('.', indexAt);
-
-    if (indexDot < indexAt) {
-      debugPrint("Dot not after @");
-      return false;
-    }
-
-    debugPrint("Email validated");
-    return true;
-  }
-
-  bool isCodeValid(String code) {
-    if (code == 0) {
-      debugPrint("Counter code can not be 0");
-      return false;
-    }
-
-    if (code.length > 3) {
-      debugPrint("Country code can not be greater than 3 digits");
-      return false;
-    }
-
-    debugPrint("Code validated");
+    if (email.isEmpty) return false;
+    if (!email.contains('@')) return false;
+    int atIndex = email.indexOf('@');
+    int dotIndex = email.indexOf('.', atIndex);
+    if (dotIndex < atIndex) return false;
     return true;
   }
 
   bool isPhoneValid(String phone) {
-    if (phone.length != 10) {
-      debugPrint("Phone number should be off 10 digits");
-      return false;
-    }
-
-    debugPrint("Phone validated");
-    return true;
+    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    return cleanPhone.length == 10;
   }
 
-  bool isPassValid(String password, String cnfPassword) {
-    if (password.length < 8) {
-      debugPrint("Password should be 8 characters long");
-      return false;
-    }
-
-    if (password != cnfPassword) {
-      debugPrint("Passwords are not matching");
-      return false;
-    }
-
-    debugPrint("Password validated");
-    return true;
+  bool isPasswordValid(String password) {
+    return password.length >= 8;
   }
 
-  Future<void> handleSignup({
-    required String name,
-    required String code,
-    required String phone,
-    required String email,
-    required String password,
-    required String cnfPassword,
-  }) async {
+  bool validateFields() {
     setState(() {
+      nameError = null;
+      emailError = null;
+      phoneError = null;
+      passwordError = null;
+
+      if (nameController.text.trim().isEmpty) {
+        nameError = 'Name is required';
+      }
+
+      if (emailController.text.trim().isEmpty) {
+        emailError = 'Email is required';
+      } else if (!isEmailValid(emailController.text.trim())) {
+        emailError = 'Please enter a valid email address';
+      }
+
+      if (phoneController.text.trim().isEmpty) {
+        phoneError = 'Phone number is required';
+      } else if (!isPhoneValid(phoneController.text.trim())) {
+        phoneError = 'Phone number must be 10 digits';
+      }
+
+      if (passwordController.text.isEmpty) {
+        passwordError = 'Password is required';
+      } else if (!isPasswordValid(passwordController.text)) {
+        passwordError = 'Password must be at least 8 characters';
+      }
+    });
+
+    return nameError == null &&
+        emailError == null &&
+        phoneError == null &&
+        passwordError == null;
+  }
+
+  Future<void> createUserWithEmailAndPassword() async {
+    setState(() {
+      generalError = null;
       isLoading = true;
     });
 
-    if (!isEmailValid(email)) {
-      debugPrint("Email validation failed");
+    if (!validateFields()) {
+      setState(() => isLoading = false);
       return;
     }
 
-    if (!isCodeValid(code)) {
-      debugPrint("Code validation failed");
-      return;
-    }
-
-    if (!isPhoneValid(phone)) {
-      debugPrint("Phone validation failed");
-      return;
-    }
-
-    if (!isPassValid(password, cnfPassword)) {
-      debugPrint("Password validation failed");
-      return;
-    }
-
-    String? uid = await signUpWithFirebase(email: email, password: password);
-
-    if (uid != null) {
-      try {
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'name': name,
-          'email': email,
-          'code': code,
-          'phone': phone,
-          'createdAt': DateTime.now(),
-        });
-
-        debugPrint("Uses stored in Firestore");
-
-        setState(() {
-          isLoading = false;
-        });
-
-        // Clear all the form fields
-        nameController.clear();
-        emailController.clear();
-        codeController.clear();
-        phoneController.clear();
-        passwordController.clear();
-        cnfPassController.clear();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Registration successful. Redirecting to login page....',
-              style: TextStyle(color: Colors.white),
-            ),
-            backgroundColor: Colors.blue,
-          ),
-        );
-
-        await Future.delayed(Duration(seconds: 2));
-
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => LoginScreen(),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      } catch (e) {
-        debugPrint("$e");
-
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<String?> signUpWithFirebase({
-    required String email,
-    required String password,
-  }) async {
     try {
-      UserCredential credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
+      UserCredential credentials = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
 
-      User? user = credential.user;
+      User? user = credentials.user;
 
-      if (user != null) {
-        debugPrint("User created with the uid: ${user.uid}");
-
-        return user.uid;
-      } else {
-        debugPrint("UID is null");
-
-        return null;
+      if (user == null) {
+        throw Exception('User creation failed');
       }
-    } on FirebaseAuthException catch (e) {
-      debugPrint("Error: $e");
 
-      return null;
+      await FirebaseFirestore.instance.collection('user').doc(user.uid).set({
+        'email': emailController.text.trim(),
+        'name': nameController.text.trim(),
+        'phone': phoneController.text.trim(), // FIXED
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // ✅ SUCCESS → STOP LOADER
+      setState(() {
+        isLoading = false;
+      });
+
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => LoginScreen(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        generalError = e.message;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        generalError = e.toString();
+        isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        child: Row(
-          children: [
-            Flexible(
-              flex: 3,
-              child: SizedBox.expand(
-                child: Image.asset(
-                  'lib/assets/login_backdrop.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
+      // Light background to make card stand out
+      backgroundColor: const Color(0xFFF5F5F5),
+
+      body: Center(
+        child: Container(
+          width: 400,
+          padding: const EdgeInsets.all(20),
+
+          child: Card(
+            color: Colors.white,
+
+            // Softer shadow with more blur
+            elevation: 8,
+            shadowColor: Colors.black26,
+
+            // Rounded corners for modern look
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            Flexible(
-              flex: 1,
-              child: SizedBox.expand(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
+
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title
+                  const Text(
+                    'Sign Up.',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Subtitle
+                  Text(
+                    'Create your account',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Name Field
+                  TextField(
+                    controller: nameController,
+
+                    decoration: InputDecoration(
+                      labelText: 'Name',
+                      labelStyle: TextStyle(color: Colors.black),
+                      hintText: 'John Doe',
+
+                      errorText: nameError,
+
+                      // Icon on left side
+                      prefixIcon: const Icon(Icons.person_outline),
+
+                      // Light background
+                      filled: true,
+                      fillColor: Colors.grey[50],
+
+                      // Border styling
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Email Field
+                  TextField(
+                    controller: emailController,
+
+                    keyboardType: TextInputType.emailAddress,
+
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      labelStyle: TextStyle(color: Colors.black),
+                      hintText: 'abc@example.com',
+
+                      errorText: emailError,
+
+                      prefixIcon: const Icon(Icons.email_outlined),
+
+                      filled: true,
+                      fillColor: Colors.grey[50],
+
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Phone Field
+                  TextField(
+                    controller: phoneController,
+
+                    keyboardType: TextInputType.phone,
+
+                    decoration: InputDecoration(
+                      labelText: 'Phone',
+                      labelStyle: TextStyle(color: Colors.black),
+                      hintText: '+91 90xxxxxx02',
+
+                      errorText: phoneError,
+
+                      prefixIcon: const Icon(Icons.phone_outlined),
+
+                      filled: true,
+                      fillColor: Colors.grey[50],
+
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+
+                  TextField(
+                    controller: passwordController,
+
+                    keyboardType: TextInputType.visiblePassword,
+
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      labelStyle: TextStyle(color: Colors.black),
+
+                      hint: Text('********'),
+
+                      errorText: passwordError,
+
+                      prefixIcon: const Icon(Icons.password_outlined),
+
+                      filled: true,
+                      fillColor: Colors.grey[50],
+
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.black),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Sign Up Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        isLoading ? null : createUserWithEmailAndPassword();
+                      },
+
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+
+                        // Rounded button
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+
+                        // Remove shadow
+                        elevation: 0,
+                      ),
+
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  if (generalError != null)
                     Text(
-                      'Register',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      generalError!,
+                      style: TextStyle(color: Colors.red, fontSize: 14),
                     ),
 
-                    SizedBox(height: 8),
+                  if (generalError != null) const SizedBox(height: 20),
 
-                    Text('We are waiting to take you in.'),
-
-                    SizedBox(height: 24),
-
-                    Container(
-                      height: 100,
-                      width: 100,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(50),
+                  // Login Link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Already Have An Account? ',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                       ),
-                      child: const Icon(
-                        Icons.security,
-                        color: Colors.white,
-                        size: 50,
+
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () {
+                            // Navigate to login
+                            Navigator.pushReplacement(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (_, __, ___) => LoginScreen(),
+                                transitionDuration: Duration.zero,
+                                reverseTransitionDuration: Duration.zero,
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-
-                    SizedBox(height: 24),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: nameController,
-
-                            style: TextStyle(color: Colors.black),
-                            cursorColor: Colors.blue,
-
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-
-                              labelText: 'Name',
-                              labelStyle: TextStyle(color: Colors.grey),
-                              floatingLabelStyle: TextStyle(color: Colors.blue),
-
-                              hintText: 'Enter your name here',
-                              hintStyle: TextStyle(color: Colors.grey),
-
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.blue),
-                              ),
-
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(color: Colors.blue),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-
-                              errorBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.red),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: 24),
-
-                          Row(
-                            children: [
-                              Flexible(
-                                flex: 1,
-                                child: TextField(
-                                  controller: codeController,
-
-                                  style: TextStyle(color: Colors.black),
-                                  cursorColor: Colors.blue,
-
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.grey.shade50,
-
-                                    labelText: 'Code',
-                                    labelStyle: TextStyle(color: Colors.grey),
-                                    floatingLabelStyle: TextStyle(
-                                      color: Colors.blue,
-                                    ),
-
-                                    hintText: '+91',
-                                    hintStyle: TextStyle(color: Colors.grey),
-
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Colors.blue,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-
-                                    errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.red),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(width: 10),
-
-                              Flexible(
-                                flex: 4,
-                                child: TextField(
-                                  controller: phoneController,
-
-                                  style: TextStyle(color: Colors.black),
-                                  cursorColor: Colors.blue,
-
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.grey.shade50,
-
-                                    labelText: 'Phone',
-                                    labelStyle: TextStyle(color: Colors.grey),
-                                    floatingLabelStyle: TextStyle(
-                                      color: Colors.blue,
-                                    ),
-
-                                    hintText: 'Enter your phone here',
-                                    hintStyle: TextStyle(color: Colors.grey),
-
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Colors.blue,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-
-                                    errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.red),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          SizedBox(height: 24),
-
-                          TextField(
-                            controller: emailController,
-
-                            style: TextStyle(color: Colors.black),
-                            cursorColor: Colors.blue,
-
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-
-                              labelText: 'Email',
-                              labelStyle: TextStyle(color: Colors.grey),
-                              floatingLabelStyle: TextStyle(color: Colors.blue),
-
-                              hintText: 'Enter your email here',
-                              hintStyle: TextStyle(color: Colors.grey),
-
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.blue),
-                              ),
-
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(color: Colors.blue),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-
-                              errorBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.red),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: 24),
-
-                          TextField(
-                            controller: passwordController,
-
-                            style: TextStyle(color: Colors.black),
-                            cursorColor: Colors.blue,
-
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-
-                              labelText: 'Password',
-                              labelStyle: TextStyle(color: Colors.grey),
-                              floatingLabelStyle: TextStyle(color: Colors.blue),
-
-                              hintText: 'Enter your password here',
-                              hintStyle: TextStyle(color: Colors.grey),
-
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.blue),
-                              ),
-
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(color: Colors.blue),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-
-                              errorBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.red),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: 24),
-
-                          TextField(
-                            controller: cnfPassController,
-
-                            style: TextStyle(color: Colors.black),
-                            cursorColor: Colors.blue,
-
-                            obscureText: true,
-
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-
-                              labelText: 'Confirm Password',
-                              labelStyle: TextStyle(color: Colors.grey),
-                              floatingLabelStyle: TextStyle(color: Colors.blue),
-
-                              hintText: 'Enter your confirm password here',
-                              hintStyle: TextStyle(color: Colors.grey),
-
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.blue),
-                              ),
-
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(color: Colors.blue),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-
-                              errorBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.red),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: 24),
-
-                          ElevatedButton(
-                            onPressed: () async {
-                              String name = nameController.text.trim();
-                              String code = codeController.text.trim();
-                              String phone = phoneController.text.trim();
-                              String email = emailController.text.trim();
-                              String password = passwordController.text.trim();
-                              String cnfPassword = cnfPassController.text
-                                  .trim();
-
-                              await handleSignup(
-                                name: name,
-                                code: code,
-                                phone: phone,
-                                email: email,
-                                password: password,
-                                cnfPassword: cnfPassword,
-                              );
-                            },
-
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: Size(500, 48),
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              elevation: 3,
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-
-                            child: isLoading
-                                ? CircularProgressIndicator(color: Colors.white)
-                                : Text(
-                                    'Sign Up',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                          ),
-
-                          SizedBox(height: 24),
-
-                          Container(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  PageRouteBuilder(
-                                    pageBuilder: (_, __, ___) => LoginScreen(),
-                                    transitionDuration: Duration.zero,
-                                    reverseTransitionDuration: Duration.zero,
-                                  ),
-                                );
-                              },
-                              child: Text(
-                                'Sign in',
-                                style: TextStyle(color: Colors.blue),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

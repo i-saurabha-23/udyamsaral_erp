@@ -22,11 +22,13 @@ class _SplashScreenState extends State<SplashScreen> {
 
     User? user = FirebaseAuth.instance.currentUser;
 
+    if (!mounted) return;
+
     if (user == null) {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => DashboardScreen(),
+          pageBuilder: (_, __, ___) => const LoginScreen(),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -35,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => LoginScreen(),
+          pageBuilder: (_, __, ___) => const DashboardScreen(),
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -46,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
+      backgroundColor: const Color(0xFFF5F5F5),
       body: SizedBox.expand(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -57,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 32,
-                color: Colors.white,
+                color: Colors.black,
               ),
             ),
 
@@ -68,13 +70,13 @@ class _SplashScreenState extends State<SplashScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
-                color: Colors.white,
+                color: Colors.black,
               ),
             ),
 
-            SizedBox(height: 24 ),
+            SizedBox(height: 24),
 
-            CircularProgressIndicator(color: Colors.white),
+            CircularProgressIndicator(color: Colors.black),
           ],
         ),
       ),
